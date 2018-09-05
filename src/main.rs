@@ -9,16 +9,18 @@ extern crate opengl_graphics;
  */
 mod app_base;
 mod art;
+mod button;
 
 //use piston::window::WindowSettings;
 //use piston::event_loop::*;
 use piston::input::*;
 //use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, GlyphCache};
-use app_base::{GameSettings, start, App, PosArgs, Renderable};
+use app_base::*;
 use graphics::*;
 
 use art::*;
+
 
 //test stuff
 //should be moved to its own folder
@@ -33,7 +35,8 @@ struct Square {
 
 struct TestApp {
     sqr: Square,
-    sheet: TileSheet
+    sheet: TileSheet,
+    btn: button::Button
 }
 
 impl Renderable for Square {
@@ -79,7 +82,25 @@ impl App for TestApp {
                 col: [1.0, 0.0, 0.0, 1.0]
             },
             sheet: TileSheet::new("res/sample.jpg".to_string(), 
-                                  3,3)
+                                  3,3),
+            btn: button::Button {
+                pos: button::ButtonPos::Centered(100),
+                w: 100,
+                h: 100,
+                normal_skin: button::ButtonSkin::Text((
+                            "Not Hover".to_string(),
+                            24,
+                            [1.0,1.0,1.0,1.0],
+                            [0.2,0.2,0.2,1.0]
+                        )),
+                hover_skin: button::ButtonSkin::Text((
+                            "Hover".to_string(),
+                            30,
+                            [1.0,1.0,1.0,1.0],
+                            [0.0,0.0,0.0,1.0]
+                        )),
+                state: button::ButtonState::Normal
+            }
         }
     }
     fn render(&self,
@@ -98,8 +119,34 @@ impl App for TestApp {
                 pos,
                 Some(&self.sheet)
             );
+            render_text("Hello World", 
+                        24,
+                        [0.2,0.2,0.2,1.0],
+                        &c.transform
+                          .trans(5.0,25.0),
+                        gl, 
+                        glyph);
 
+            self.btn.render(
+                    &c.transform,
+                    gl,
+                    glyph,
+                    args,
+                    pos,
+                    None
+                );
         }); 
+    }
+
+    fn mouse_move(&mut self, _pos: &PosArgs) {
+        let event = self.btn.mouse_move(_pos);
+    }
+
+    fn click(&mut self, _pos: &PosArgs, _btn: MouseButton) {
+        if let button::ButtonEvent::Clicked = 
+                    self.btn.click(_pos, _btn) {
+            println!("clicked");
+        }
     }
 }
 

@@ -65,10 +65,7 @@ pub trait App {
 
 //this should be updated to return a gameevent
 pub trait Entity<T: GameEvent> {
-    fn update(&mut self, 
-              _args: &UpdateArgs) -> Option<T> {
-        None        
-    }
+    fn update(&mut self, _args: &UpdateArgs) -> T;
 }
 
 pub trait Renderable {
@@ -86,21 +83,15 @@ pub trait Renderable {
 
 //these should be updated to return a gameevent
 pub trait MouseInteract<T: GameEvent> {
-    fn mouse_move(&mut self, 
-                  _pos: &PosArgs) -> Option<T> {
-        None
-    }
+    fn mouse_move(&mut self, _pos: &PosArgs) -> T;
 
     fn click(&mut self, 
              _pos: &PosArgs, 
-             _btn: MouseButton) -> Option<T> {
-        None
-    } 
+             _btn: MouseButton) -> T;
 
-    fn resize(&mut self, 
-              _pos: &PosArgs) -> Option<T> {
-        None
-    }
+    fn resize(&mut self, _pos: &PosArgs) -> T;
+
+    fn in_bound(&self, _pos: &PosArgs) -> bool;
 }
 
 pub fn start<A: App>(settings: GameSettings) {

@@ -4,13 +4,37 @@
 extern crate opengl_graphics;
 extern crate image;
 
-use opengl_graphics::{GlGraphics, Texture, TextureSettings};
+use opengl_graphics::{GlGraphics, 
+                      Texture, 
+                      TextureSettings, 
+                      GlyphCache};
 use graphics::*;
 use art::image::{GenericImage};
 
+
+pub fn render_text(txt: &str, 
+                   font_size: u32,
+                   col: [f32; 4],
+                   t: &math::Matrix2d,
+                   gl: &mut GlGraphics,
+                   glyph: &mut GlyphCache) {
+    let txt = text::Text::new_color(col, font_size)
+                .draw(txt, 
+                      glyph, 
+                      &DrawState::default(),
+                      *t, 
+                      gl);
+
+    match txt {
+        Ok(x) => {},
+        Err(e) => {}
+    }
+}
+
+
 pub struct TileSheet {
    width: u32,
-   height: u32,
+  height: u32,
    sheet: Vec<Texture> 
 }
 
@@ -82,3 +106,4 @@ impl TileSheet {
         }
     }
 }
+
