@@ -1,12 +1,15 @@
+extern crate rand;
+
 use opengl_graphics::{GlGraphics, GlyphCache};
 use graphics::*;
 use piston::input::*;
 use art::TileSheet;
 use app_base::*;
+use game_board::rand::*;
 
 pub enum GameBoardEvent {
     Finish,
-    Fail,
+    Fail(u32),
     NoEvent
 }
 
@@ -29,7 +32,8 @@ pub struct GameBoard {
     snake: Vec<(u32, u32)>, //vec of (x,y)
     dir: Direction,
     food: (u32, u32),
-    time_since_update: f64
+    time_since_update: f64,
+    rand: rand::rngs::ThreadRng
 }
 
 
@@ -41,10 +45,11 @@ impl GameBoard {
             snake: vec![(0,0)],
             dir: Direction::Right,
             food: (w-1,h-1),
-            time_since_update: 0.0
+            time_since_update: 0.0,
+            rand: rand::thread_rng()
         }
     }
-    
+
     //determines if the next move is valid or not
     //is not valid if any of the following conditions are met
     //1. head_x is 0 and move left
@@ -58,14 +63,14 @@ impl GameBoard {
         let (head_x, head_y) = (*head_x, *head_y);
 
         let invalid = 
-        (head_x == 0 && 
-         self.dir == Direction::Left) ||
-        (head_x == self.width - 1 && 
-         self.dir == Direction::Right) ||
-        (head_y == 0 &&
-         self.dir == Direction::Up) ||
-        (head_y == self.height - 1 && 
-         self.dir == Direction::Down);
+            (head_x == 0 && 
+             self.dir == Direction::Left) ||
+            (head_x == self.width - 1 && 
+             self.dir == Direction::Right) ||
+            (head_y == 0 &&
+             self.dir == Direction::Up) ||
+            (head_y == self.height - 1 && 
+             self.dir == Direction::Down);
 
 
         invalid || self.pos_in_snake(new_head)
@@ -74,7 +79,7 @@ impl GameBoard {
     fn get_next_head(&self) -> (u32, u32) {
         let (curx, cury) = &self.snake.get(0).unwrap();
         let (curx, cury) = (*curx, *cury);
-        
+
         let (x,y) = match self.dir {
             Direction::Left => {
                 if curx == 0 {
@@ -117,16 +122,28 @@ impl GameBoard {
     }
     fn shift_snake(&mut self, new_head: (u32, u32)) {
         let top = self.snake.len();
-        println!("{:?}", (1..top));
         for i in (1..top).rev() {
-            println!("Shift {} -> {}", i-1, i);
             let tmp = self.snake.get(i-1).unwrap().clone();
             *self.snake.get_mut(i).unwrap() = tmp;
         }
         *self.snake.get_mut(0).unwrap() = new_head;
     }
     fn reset_food(&mut self) {
-        
+        let possible_x: Vec<u32> = (0..self.width).collect();
+        let possible_y: Vec<u32> = (0..self.height).collect();
+
+        while true {
+            let new_pos = (
+                self.rand.choose(&possible_x),
+                self.rand.choose(&possible_y)
+            );
+            if let (Some(x), Some(y)) = new_pos {
+                if !self.pos_in_snake((*x,*y)) {
+                    self.food = (*x,*y);
+                    return;
+                }
+            }
+        }
     }
     fn grow_snake(&mut self) {
         let len = self.snake.len();
@@ -143,7 +160,8 @@ impl Entity<GameBoardEvent> for GameBoard {
             self.time_since_update = 0.0;
             let new_head = self.get_next_head();
             if self.is_bad_move(new_head) {
-                return GameBoardEvent::Fail;
+                let len = self.snake.len() as u32;
+                return GameBoardEvent::Fail(len);
             } else {
                 self.shift_snake(new_head);            
             }
@@ -153,7 +171,6 @@ impl Entity<GameBoardEvent> for GameBoard {
                 self.reset_food();
             }
 
-            println!("{:?}", &self.snake);
         }
         GameBoardEvent::NoEvent
     }
@@ -169,15 +186,15 @@ impl Renderable for GameBoard {
               _sheet: Option<&TileSheet>) {
         //we are going to make the board a checker board
         clear([1.0,1.0,1.0,1.0], _gl);
-        
-        
+
+
         let (cw, ch) = (
-                _pos.win_w as f64 / self.width as f64,
-                _pos.win_h as f64 / self.height as f64
-            );
-    
+            _pos.win_w as f64 / self.width as f64,
+            _pos.win_h as f64 / self.height as f64
+        );
+
         let sqr = rectangle::square(0.0, 0.0, 1.0);
-        
+
         //draw the board
 
         for xc in 0..self.width {
@@ -190,7 +207,7 @@ impl Renderable for GameBoard {
                 rectangle(col, sqr, 
                           _t.trans(xc as f64 * cw,
                                    yc as f64 * ch)
-                            .scale(cw, ch),
+                          .scale(cw, ch),
                           _gl);        
             }
         }
@@ -202,7 +219,7 @@ impl Renderable for GameBoard {
                       sqr, 
                       _t.trans(*xc as f64 * cw,
                                *yc as f64 * ch)
-                        .scale(cw, ch),
+                      .scale(cw, ch),
                       _gl);
         }
 
@@ -216,7 +233,7 @@ impl Renderable for GameBoard {
                   sqr, 
                   _t.trans(food_x as f64 * cw,
                            food_y as f64 * ch)
-                    .scale(cw, ch),
+                  .scale(cw, ch),
                   _gl);
     }
 }

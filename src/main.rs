@@ -45,7 +45,7 @@ struct GameApp {
 impl App for GameApp {
     fn new() -> Self {
         GameApp {
-            state: GameState::Title(TitleScreen::new())
+            state: GameState::Title(TitleScreen::new(0))
         }
     }
     fn render(&self,
@@ -80,6 +80,7 @@ impl App for GameApp {
     }
 
     fn update(&mut self, _args: &UpdateArgs, _pos: &PosArgs) {
+        let mut new_state: Option<GameState> = None;
         match &mut self.state {
             GameState::Title(ts) => {
                 ts.update(_args);
@@ -87,12 +88,18 @@ impl App for GameApp {
             GameState::Game(game) => {
                 let e = game.update(_args);
                 match e {
-                    GameBoardEvent::Fail => {
-                        println!("Fail!");
+                    GameBoardEvent::Fail(len) => {
+                        println!("Fail! {}", len);
+                        new_state = Some(GameState::Title(
+                                         TitleScreen::new(len)));
                     }
                     _ => {}
                 }
             }
+        }
+
+        if let Some(new_state) = new_state {
+            self.state = new_state;
         }
     }
 

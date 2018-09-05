@@ -2,7 +2,7 @@ use opengl_graphics::{GlGraphics, GlyphCache};
 use graphics::*;
 use piston::input::*;
 use app_base::*;
-use art::TileSheet;
+use art::{render_text, TileSheet};
 use button;
 
 pub enum TitleEvent {
@@ -15,11 +15,12 @@ impl GameEvent for TitleEvent {
 }
 
 pub struct TitleScreen {
-    playbtn: button::Button
+    playbtn: button::Button,
+    high_score: u32
 }
 
 impl TitleScreen {
-    pub fn new() -> Self {
+    pub fn new(hs: u32) -> Self {
         TitleScreen {
             playbtn: button::Button {
                pos: button::ButtonPos::Centered(100),
@@ -38,7 +39,8 @@ impl TitleScreen {
                        [0.5, 0.5, 0.5,1.0]
                        )),
                state: button::ButtonState::Normal
-            }
+            },
+        high_score: hs 
         }
     }
 }
@@ -60,7 +62,16 @@ impl Renderable for TitleScreen {
                 _args,
                 _pos,
                 None
-           ); 
+           );
+       let high_score_text = format!("Score: {}", 
+                                     self.high_score);
+       render_text(
+            &high_score_text,
+            24,
+            [1.0,1.0,1.0,1.0],
+            &_t.trans(5.0, 25.0),
+            _gl,
+            _glyph); 
     }
 }
 
