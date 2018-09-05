@@ -10,7 +10,8 @@ extern crate opengl_graphics;
 mod app_base;
 mod art;
 mod button;
-
+mod title_screen;
+mod game_board;
 //use piston::window::WindowSettings;
 //use piston::event_loop::*;
 use piston::input::*;
@@ -20,87 +21,31 @@ use app_base::*;
 use graphics::*;
 
 use art::*;
+use title_screen::*;
+use game_board::*;
+/*
+ * How does one make a game with this engine?
+ * 1. Set up the main App to have a game state enum
+ * 2. Pass Arguments to game states on events
+ * 3. Game events have all data for their state and can talk to the
+ *    main game only through events in the implemented methods
+ * 4. 
+ *
+ */
 
-
-//test stuff
-//should be moved to its own folder
-
-struct Square {
-    x: u32,
-    y: u32,
-    w: u32,
-    h: u32,
-    col: [f32; 4] 
+enum GameState {
+    Title(TitleScreen),
+    Game(GameBoard)
 }
 
-struct TestApp {
-    sqr: Square,
-    sheet: TileSheet,
-    btn: button::Button
+struct GameApp {
+    state: GameState
 }
 
-impl Renderable for Square {
-    fn render(&self, 
-              _t: &math::Matrix2d,
-              _gl: &mut GlGraphics,
-              _glyph: &mut GlyphCache, 
-              _args: &RenderArgs,
-              _pos: &PosArgs,
-              _sheet: Option<&TileSheet>) {
-
-        match _sheet {
-            Some(sheet) => {
-                let transform = _t.trans(self.x as f64, 
-                                         self.y as f64);
-                sheet.render_tile(0,0,
-                                   self.w as f64, 
-                                   self.h as f64,
-                                   &transform,
-                                   _gl);
-            },
-            None => {
-                let sqr = rectangle::square(0.0, 0.0, 1.0);
-                rectangle(self.col, sqr,
-                          _t.trans(self.x as f64, 
-                                   self.y as f64)
-                          .scale(self.w as f64,
-                                 self.h as f64), 
-                          _gl);
-            }
-        }
-    }
-}
-
-impl App for TestApp {
+impl App for GameApp {
     fn new() -> Self {
-        TestApp {
-            sqr: Square {
-                x: 5,
-                y: 5,
-                w: 100,
-                h: 100,
-                col: [1.0, 0.0, 0.0, 1.0]
-            },
-            sheet: TileSheet::new("res/sample.jpg".to_string(), 
-                                  3,3),
-            btn: button::Button {
-                pos: button::ButtonPos::Centered(100),
-                w: 100,
-                h: 100,
-                normal_skin: button::ButtonSkin::Text((
-                            "Not Hover".to_string(),
-                            24,
-                            [1.0,1.0,1.0,1.0],
-                            [0.2,0.2,0.2,1.0]
-                        )),
-                hover_skin: button::ButtonSkin::Text((
-                            "Hover".to_string(),
-                            30,
-                            [1.0,1.0,1.0,1.0],
-                            [0.0,0.0,0.0,1.0]
-                        )),
-                state: button::ButtonState::Normal
-            }
+        GameApp {
+            state: GameState::Title(TitleScreen::new())
         }
     }
     fn render(&self,
@@ -109,43 +54,100 @@ impl App for TestApp {
               args: &RenderArgs, 
               pos: &PosArgs) {
         gl.draw(args.viewport(), |c, gl| {
-
-            clear([0.0,1.0,0.0,1.0], gl);
-            self.sqr.render(
-                &c.transform,
-                gl,
-                glyph,
-                args,
-                pos,
-                Some(&self.sheet)
-            );
-            render_text("Hello World", 
-                        24,
-                        [0.2,0.2,0.2,1.0],
-                        &c.transform
-                          .trans(5.0,25.0),
-                        gl, 
-                        glyph);
-
-            self.btn.render(
-                    &c.transform,
-                    gl,
-                    glyph,
-                    args,
-                    pos,
-                    None
-                );
+            match &self.state {
+                GameState::Title(title_screen) => {
+                    title_screen.render(
+                            &c.transform,
+                            gl,
+                            glyph,
+                            args,
+                            pos,
+                            None
+                        );
+                },
+                GameState::Game(game) => {
+                    game.render(
+                            &c.transform,
+                            gl, 
+                            glyph,
+                            args,
+                            pos,
+                            None
+                        );
+                }
+            }
         }); 
     }
 
+    fn update(&mut self, _args: &UpdateArgs, _pos: &PosArgs) {
+        match &mut self.state {
+            GameState::Title(ts) => {
+                ts.update(_args);
+            },
+            GameState::Game(game) => {
+                let e = game.update(_args);
+                match e {
+                    GameBoardEvent::Fail => {
+                        println!("Fail!");
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
     fn mouse_move(&mut self, _pos: &PosArgs) {
-        let event = self.btn.mouse_move(_pos);
+        match &mut self.state {
+            GameState::Title(title_screen) => {
+                title_screen.mouse_move(_pos);
+            },
+            GameState::Game(game) => {
+                game.mouse_move(_pos);
+            }
+        }
     }
 
     fn click(&mut self, _pos: &PosArgs, _btn: MouseButton) {
-        if let button::ButtonEvent::Clicked = 
-                    self.btn.click(_pos, _btn) {
-            println!("clicked");
+        let mut new_state: Option<GameState> = None; 
+        
+        match &mut self.state {
+            GameState::Title(ts) => {
+                let e = ts.click(_pos, _btn);
+                if let TitleEvent::PlayGameButtonPress = e {
+                    println!("Play Game!");
+                    new_state = Some(GameState::Game(
+                                    GameBoard::new(10,10)));
+                }
+            },
+            GameState::Game(game) => {
+                game.click(_pos, _btn);
+            }
+        }
+
+        if let Some(state) = new_state {
+            self.state = state;
+        }
+    }
+
+    fn key_press(&mut self, key: Key) {
+        match &mut self.state {
+            GameState::Title(ts) => {
+                ts.key_press(key);
+            },
+            GameState::Game(game) => {
+                game.key_press(key);
+            }
+        }
+    }
+
+    fn key_release(&mut self, key: Key) {
+        match &mut self.state {
+            GameState::Title(ts) => {
+                ts.key_release(key);
+            },
+            GameState::Game(game) => {
+                game.key_release(key);
+            }
         }
     }
 }
@@ -155,9 +157,9 @@ fn main() {
     let settings = GameSettings {
         width: 400,
         height: 400,
-        game_title: "game engine".to_string(),
+        game_title: "game engine - snake".to_string(),
         font: "res/FiraSans-Regular.ttf".to_string()
     };
 
-    start::<TestApp>(settings);
+    start::<GameApp>(settings);
 }

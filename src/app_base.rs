@@ -60,6 +60,12 @@ pub trait App {
               _pos: &PosArgs) {
         
     }
+    fn key_press(&mut self,key: Key) {
+        
+    }
+    fn key_release(&mut self, key: Key) {
+
+    }
 }
 
 
@@ -92,6 +98,11 @@ pub trait MouseInteract<T: GameEvent> {
     fn resize(&mut self, _pos: &PosArgs) -> T;
 
     fn in_bound(&self, _pos: &PosArgs) -> bool;
+}
+
+pub trait KeyInteract<T: GameEvent> {
+    fn key_press(&mut self, key: Key) -> T;
+    fn key_release(&mut self, key: Key) -> T;
 }
 
 pub fn start<A: App>(settings: GameSettings) {
@@ -139,6 +150,14 @@ pub fn start<A: App>(settings: GameSettings) {
         if let Some(Button::Mouse(btn)) = e.press_args() {
             //mouse press
             app.click(&window_pos, btn);
+        }
+
+        if let Some(Button::Keyboard(key)) = e.press_args() {
+            app.key_press(key);
+        }
+
+        if let Some(Button::Keyboard(key)) = e.release_args() {
+            app.key_release(key);
         }
 
         e.mouse_cursor(|x,y| {
